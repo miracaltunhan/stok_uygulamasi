@@ -4,7 +4,7 @@ import { Text, Card, Button, DataTable } from 'react-native-paper';
 import { productService, stockService } from '../../services/api';
 import { Product, Stock } from '../../types';
 
-export default function HomeScreen() {
+export default function ReportsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [stockMovements, setStockMovements] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,4 +102,4 @@ const styles = StyleSheet.create({
   refreshButton: {
     margin: 16,
   },
-});
+}); 
