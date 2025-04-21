@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { Text, Card, FAB, Button } from 'react-native-paper';
-import { stockService, productService } from '../../services/api';
-import { Stock, Product } from '../../types';
-import { router } from 'expo-router';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, Card, Button, DataTable, Portal, Modal, TextInput, FAB } from 'react-native-paper';
+import { stockService } from '../../services/api';
+import { Stock } from '../../types';
 
 export default function StockMovementsScreen() {
-  const [stockMovements, setStockMovements] = useState<Stock[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [movements, setMovements] = useState<Stock[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedMovement, setSelectedMovement] = useState<Stock | null>(null);
+  const [description, setDescription] = useState('');
 
   useEffect(() => {
     loadData();
@@ -15,47 +17,138 @@ export default function StockMovementsScreen() {
 
   const loadData = async () => {
     try {
-      const [stockResponse, productsResponse] = await Promise.all([
-        stockService.getAll(),
-        productService.getAll()
-      ]);
-      setStockMovements(stockResponse.data);
-      setProducts(productsResponse.data);
+      setLoading(true);
+      const response = await stockService.getAll();
+      setMovements(response.data);
     } catch (error) {
       console.error('Veriler yüklenirken hata oluştu:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getProductName = (productId: number) => {
-    const product = products.find(p => p.id === productId);
-    return product ? product.name : 'Bilinmeyen Ürün';
+  const handleDeleteMovement = async (id: number) => {
+    try {
+      await stockService.delete(id);
+      loadData();
+    } catch (error) {
+      console.error('Hareket silinirken hata oluştu:', error);
+    }
   };
 
-  const renderStockMovement = ({ item }: { item: Stock }) => (
-    <Card style={styles.card} mode="outlined">
-      <Card.Content>
-        <Text variant="titleMedium">{getProductName(item.product_id)}</Text>
-        <Text variant="bodyMedium">Miktar: {item.quantity}</Text>
-        <Text variant="bodySmall">
-          Tarih: {new Date(item.created_at).toLocaleDateString('tr-TR')}
-        </Text>
-      </Card.Content>
-    </Card>
-  );
+  const handleEditMovement = async () => {
+    if (!selectedMovement) return;
+    
+    try {
+      await stockService.update(selectedMovement.id, {
+        description
+      });
+      setEditModalVisible(false);
+      loadData();
+    } catch (error) {
+      console.error('Hareket güncellenirken hata oluştu:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={stockMovements}
-        renderItem={renderStockMovement}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.list}
-      />
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => router.push('/stock-movement-form')}
-      />
+      <Card style={styles.card}>
+        <Card.Title title="Stok Hareketleri" />
+        <Card.Content>
+          <ScrollView horizontal>
+            <DataTable>
+              <DataTable.Header>
+                <DataTable.Title style={styles.column}>Ürün</DataTable.Title>
+                <DataTable.Title style={styles.column}>Miktar</DataTable.Title>
+                <DataTable.Title style={styles.column}>Tür</DataTable.Title>
+                <DataTable.Title style={styles.column}>Tarih</DataTable.Title>
+                <DataTable.Title style={styles.column}>Açıklama</DataTable.Title>
+                <DataTable.Title style={styles.column}>İşlemler</DataTable.Title>
+              </DataTable.Header>
+
+              {movements.length > 0 ? (
+                movements.map((movement) => (
+                  <DataTable.Row key={movement.id}>
+                    <DataTable.Cell style={styles.column}>{movement.product_id}</DataTable.Cell>
+                    <DataTable.Cell style={styles.column}>{Math.abs(movement.quantity)}</DataTable.Cell>
+                    <DataTable.Cell style={styles.column}>
+                      <Text style={[
+                        styles.statusBadge,
+                        { backgroundColor: movement.quantity > 0 ? '#28a745' : '#dc3545' }
+                      ]}>
+                        {movement.quantity > 0 ? 'Giriş' : 'Çıkış'}
+                      </Text>
+                    </DataTable.Cell>
+                    <DataTable.Cell style={styles.column}>
+                      {new Date(movement.created_at).toLocaleDateString('tr-TR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </DataTable.Cell>
+                    <DataTable.Cell style={styles.column}>{movement.description || '-'}</DataTable.Cell>
+                    <DataTable.Cell style={styles.column}>
+                      <View style={styles.actionButtons}>
+                        <Button
+                          mode="contained"
+                          buttonColor="#ffc107"
+                          onPress={() => {
+                            setSelectedMovement(movement);
+                            setDescription(movement.description || '');
+                            setEditModalVisible(true);
+                          }}
+                          style={styles.actionButton}
+                        >
+                          Düzenle
+                        </Button>
+                        <Button
+                          mode="contained"
+                          buttonColor="#dc3545"
+                          onPress={() => handleDeleteMovement(movement.id)}
+                          style={styles.actionButton}
+                        >
+                          Sil
+                        </Button>
+                      </View>
+                    </DataTable.Cell>
+                  </DataTable.Row>
+                ))
+              ) : (
+                <DataTable.Row>
+                  <DataTable.Cell style={[styles.column, styles.emptyCell]}>
+                    Henüz stok hareketi bulunmuyor.
+                  </DataTable.Cell>
+                </DataTable.Row>
+              )}
+            </DataTable>
+          </ScrollView>
+        </Card.Content>
+      </Card>
+
+      <Portal>
+        <Modal
+          visible={editModalVisible}
+          onDismiss={() => setEditModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>
+            Hareket Düzenle
+          </Text>
+          <TextInput
+            label="Açıklama"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            style={styles.input}
+          />
+          <View style={styles.modalButtons}>
+            <Button onPress={() => setEditModalVisible(false)}>İptal</Button>
+            <Button mode="contained" onPress={handleEditMovement}>Kaydet</Button>
+          </View>
+        </Modal>
+      </Portal>
     </View>
   );
 }
@@ -65,16 +158,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  list: {
-    padding: 16,
-  },
   card: {
+    margin: 8,
+    flex: 1,
+  },
+  column: {
+    width: 150,
+    paddingHorizontal: 8,
+  },
+  emptyCell: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    color: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    fontSize: 12,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    marginHorizontal: 2,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
+  },
+  modalTitle: {
     marginBottom: 16,
   },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
+  input: {
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
   },
 }); 
