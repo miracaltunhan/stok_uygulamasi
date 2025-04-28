@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { Text, Card, Button, DataTable, List } from 'react-native-paper';
-import { productService, stockService } from '../../services/api';
+import api from '../../services/api';
 import { Product, Stock } from '../../types';
 
 export default function HomeScreen() {

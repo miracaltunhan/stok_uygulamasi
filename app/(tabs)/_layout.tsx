@@ -51,6 +51,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="charts"
+          options={{
+            title: 'Grafikler',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="bar-chart" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="chatbot"
           options={{
             title: 'Chatbot',
