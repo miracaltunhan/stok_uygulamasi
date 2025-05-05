@@ -28,11 +28,11 @@ interface StockAnalytics {
 
 export default function ChartsScreen() {
   const [analytics, setAnalytics] = useState<StockAnalytics>({
-    total_items: 0,
-    critical_items: 0,
+    total_items: 100,
+    critical_items: 25,
     stock_tracking_distribution: {
-      otomatik: 0,
-      manuel: 0
+      otomatik: 70,
+      manuel: 30
     }
   });
   const [activeItems, setActiveItems] = useState<Product[]>([]);
@@ -60,21 +60,9 @@ export default function ChartsScreen() {
       
       setActiveItems(productsResponse);
       setAnalytics(analyticsResponse);
-    } catch (error: unknown) {
-      console.error('Veri yüklenirken detaylı hata:', error);
-      if (axios.isAxiosError(error)) {
-        // Sunucudan gelen hata yanıtı
-        console.error('Sunucu yanıtı:', error.response?.data);
-        console.error('Durum kodu:', error.response?.status);
-      } else if (error instanceof Error) {
-        // İstek oluşturulurken hata oluştu
-        console.error('İstek hatası:', error.message);
-      }
-      
-      Alert.alert(
-        'Hata',
-        'Veriler yüklenirken bir hata oluştu: ' + (axios.isAxiosError(error) ? error.response?.data?.message : error instanceof Error ? error.message : 'Bilinmeyen hata')
-      );
+    } catch (error) {
+      console.error('Veri yüklenirken hata:', error);
+      Alert.alert('Hata', 'Veriler yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -89,12 +77,9 @@ export default function ChartsScreen() {
       const response = await StockService.getProductMovements(product.id);
       console.log('Ürün hareketleri:', response);
       setMovementsData(response);
-    } catch (error: unknown) {
-      console.error('Stok hareketleri yüklenirken detaylı hata:', error);
-      Alert.alert(
-        'Hata',
-        'Stok hareketleri yüklenirken bir hata oluştu: ' + (axios.isAxiosError(error) ? error.response?.data?.message : error instanceof Error ? error.message : 'Bilinmeyen hata')
-      );
+    } catch (error) {
+      console.error('Stok hareketleri yüklenirken hata:', error);
+      Alert.alert('Hata', 'Stok hareketleri yüklenirken bir hata oluştu');
     }
   };
 
@@ -108,6 +93,11 @@ export default function ChartsScreen() {
     color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
     style: {
       borderRadius: 16
+    },
+    propsForDots: {
+      r: "6",
+      strokeWidth: "2",
+      stroke: "#ffa726"
     }
   };
 

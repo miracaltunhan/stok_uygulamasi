@@ -1,15 +1,19 @@
 import axios from 'axios';
 
 // Bilgisayarınızın IP adresini buraya yazın
-const API_URL = 'http://192.168.0.9:8000/api';  
+const API_URL = 'http://192.168.0.9:8000/api';
 
 class StockService {
     // Ürünleri getir
     async getAllItems() {
         try {
+            console.log('API URL:', `${API_URL}/items`);
             const response = await axios.get(`${API_URL}/items`);
+            console.log('Ürünler yanıtı:', response.data);
             return response.data;
         } catch (error) {
+            console.error('Ürünler alınırken hata:', error);
+            console.error('Hata detayı:', error.response?.data || error.message);
             throw error;
         }
     }
@@ -17,9 +21,13 @@ class StockService {
     // Stok analitiğini getir
     async getStockAnalytics() {
         try {
+            console.log('API URL:', `${API_URL}/stock-analytics`);
             const response = await axios.get(`${API_URL}/stock-analytics`);
+            console.log('Analitik yanıtı:', response.data);
             return response.data;
         } catch (error) {
+            console.error('Analitik alınırken hata:', error);
+            console.error('Hata detayı:', error.response?.data || error.message);
             throw error;
         }
     }
