@@ -1,268 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView as RNScrollView, Dimensions, Alert } from 'react-native';
-import { Text, Card, Button, Menu } from 'react-native-paper';
-import { LineChart, PieChart } from 'react-native-chart-kit';
-import StockService from '../../services/StockService';
-import axios, { AxiosError } from 'axios';
+import React from 'react';
+import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { Text, Card } from 'react-native-paper';
+import { LineChart, BarChart } from 'react-native-chart-kit';
+import { useApp } from '../../context/AppContext';
 
-interface StockMovement {
-  dates: string[];
-  stock: number[];
-}
-
-interface Product {
-  id: number;
-  name: string;
-  unit: string;
-  stock_quantity: number;
-}
-
-interface StockAnalytics {
-  total_items: number;
-  critical_items: number;
-  stock_tracking_distribution: {
-    otomatik: number;
-    manuel: number;
-  };
-}
+const screenWidth = Dimensions.get('window').width;
 
 export default function ChartsScreen() {
-  const [analytics, setAnalytics] = useState<StockAnalytics>({
-    total_items: 100,
-    critical_items: 25,
-    stock_tracking_distribution: {
-      otomatik: 70,
-      manuel: 30
-    }
-  });
-  const [activeItems, setActiveItems] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [movementsData, setMovementsData] = useState<StockMovement | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { products } = useApp();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      console.log('API çağrısı başlıyor...');
-      
-      const [productsResponse, analyticsResponse] = await Promise.all([
-        StockService.getAllItems(),
-        StockService.getStockAnalytics()
-      ]);
-      
-      console.log('Ürünler:', productsResponse);
-      console.log('Analitik veriler:', analyticsResponse);
-      
-      setActiveItems(productsResponse);
-      setAnalytics(analyticsResponse);
-    } catch (error) {
-      console.error('Veri yüklenirken hata:', error);
-      Alert.alert('Hata', 'Veriler yüklenirken bir hata oluştu');
-    } finally {
-      setLoading(false);
-    }
+  // Stok durumu grafiği için veri
+  const stockData = {
+    labels: products.map(p => p.name),
+    datasets: [{
+      data: products.map(p => p.current_stock)
+    }]
   };
 
-  const handleProductSelect = async (product: Product) => {
-    setSelectedProduct(product);
-    setMenuVisible(false);
-
-    try {
-      console.log('Ürün hareketleri yükleniyor:', product.id);
-      const response = await StockService.getProductMovements(product.id);
-      console.log('Ürün hareketleri:', response);
-      setMovementsData(response);
-    } catch (error) {
-      console.error('Stok hareketleri yüklenirken hata:', error);
-      Alert.alert('Hata', 'Stok hareketleri yüklenirken bir hata oluştu');
-    }
+  // Tüketim grafiği için veri
+  const consumptionData = {
+    labels: products.map(p => p.name),
+    datasets: [{
+      data: products.map(p => p.monthly_consumption)
+    }]
   };
-
-  const screenWidth = Dimensions.get('window').width;
-
-  const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-    style: {
-      borderRadius: 16
-    },
-    propsForDots: {
-      r: "6",
-      strokeWidth: "2",
-      stroke: "#ffa726"
-    }
-  };
-
-  const pieChartData = [
-    {
-      name: 'Normal Stok',
-      population: analytics.total_items - analytics.critical_items,
-      color: '#36A2EB',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12
-    },
-    {
-      name: 'Kritik Stok',
-      population: analytics.critical_items,
-      color: '#FF6384',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12
-    }
-  ];
-
-  const trackingPieData = [
-    {
-      name: 'Otomatik',
-      population: analytics.stock_tracking_distribution.otomatik,
-      color: '#FF9F40',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12
-    },
-    {
-      name: 'Manuel',
-      population: analytics.stock_tracking_distribution.manuel,
-      color: '#9966FF',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12
-    }
-  ];
-
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.loading]}>
-        <Text>Veriler yükleniyor...</Text>
-      </View>
-    );
-  }
-
-  if (!analytics || !analytics.stock_tracking_distribution) {
-    return (
-      <View style={[styles.container, styles.loading]}>
-        <Text>Veri bulunamadı veya hatalı format</Text>
-        <Button mode="contained" onPress={loadData} style={styles.retryButton}>
-          Yeniden Dene
-        </Button>
-      </View>
-    );
-  }
 
   return (
-    <RNScrollView style={styles.container} scrollEnabled={true} nestedScrollEnabled={true}>
-      <View>
-        <Text variant="headlineMedium" style={styles.title}>Stok Analiz Grafikleri</Text>
-        
-        <Card style={styles.card}>
-          <Card.Title title="Stok Durumu" />
-          <Card.Content>
-            <PieChart
-              data={pieChartData}
-              width={screenWidth - 32}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-            />
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Title title="Stok Takip Türü" />
-          <Card.Content>
-            <PieChart
-              data={trackingPieData}
-              width={screenWidth - 32}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-            />
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Title title="Stok Hareketleri Analizi" />
-          <Card.Content>
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <Button onPress={() => setMenuVisible(true)}>
-                  {selectedProduct ? selectedProduct.name : 'Ürün Seçin'}
-                </Button>
-              }
-            >
-              {activeItems.map((item) => (
-                <Menu.Item
-                  key={item.id}
-                  onPress={() => handleProductSelect(item)}
-                  title={`${item.name} ${item.unit}`}
-                />
-              ))}
-            </Menu>
-
-            {selectedProduct && (
-              <View style={styles.productInfo}>
-                <Text>Seçili Ürün: {selectedProduct.name}</Text>
-                <Text>Birim: {selectedProduct.unit}</Text>
-              </View>
-            )}
-
-            {movementsData && (
-              <LineChart
-                data={{
-                  labels: movementsData.dates,
-                  datasets: [{
-                    data: movementsData.stock
-                  }]
-                }}
-                width={screenWidth - 32}
-                height={220}
-                chartConfig={chartConfig}
-                bezier
-                style={styles.chart}
+      <View style={styles.container}>
+        <ScrollView>
+          <Card style={styles.card}>
+            <Card.Title title="Stok Durumu" />
+            <Card.Content>
+              <BarChart
+                  data={stockData}
+                  width={screenWidth - 32}
+                  height={220}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: {
+                      borderRadius: 16
+                    }
+                  }}
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                  }}
               />
-            )}
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
+
+          <Card style={styles.card}>
+            <Card.Title title="Aylık Tüketim" />
+            <Card.Content>
+              <LineChart
+                  data={consumptionData}
+                  width={screenWidth - 32}
+                  height={220}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: {
+                      borderRadius: 16
+                    }
+                  }}
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                  }}
+              />
+            </Card.Content>
+          </Card>
+
+          <Card style={styles.card}>
+            <Card.Title title="Kritik Stok Durumu" />
+            <Card.Content>
+              {products
+                  .filter(product => product.current_stock <= product.minimum_stock)
+                  .map(product => (
+                      <View key={product.id} style={styles.criticalItem}>
+                        <Text style={styles.criticalItemName}>{product.name}</Text>
+                        <Text style={styles.criticalItemStock}>
+                          Mevcut: {product.current_stock} {product.unit} / Minimum: {product.minimum_stock} {product.unit}
+                        </Text>
+                      </View>
+                  ))}
+            </Card.Content>
+          </Card>
+        </ScrollView>
       </View>
-    </RNScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loading: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
     padding: 16,
-    textAlign: 'center',
   },
   card: {
-    margin: 8,
+    marginBottom: 16,
   },
-  productInfo: {
-    marginVertical: 16,
+  criticalItem: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+  criticalItemName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#dc3545',
   },
-  retryButton: {
-    marginTop: 16,
-  }
+  criticalItemStock: {
+    fontSize: 14,
+    color: '#666',
+  },
 }); 
