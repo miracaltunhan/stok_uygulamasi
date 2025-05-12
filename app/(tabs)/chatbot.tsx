@@ -45,51 +45,51 @@ export default function ChatbotScreen() {
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
-    <Surface
-      style={[
-        styles.messageBubble,
-        item.isUser ? styles.userMessage : styles.botMessage,
-      ]}
-      elevation={1}
-    >
-      <Text>{item.text}</Text>
-      <Text style={styles.timestamp}>
-        {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </Surface>
+      <Surface
+          style={[
+            styles.messageBubble,
+            item.isUser ? styles.userMessage : styles.botMessage,
+          ]}
+          elevation={1}
+      >
+        <Text>{item.text}</Text>
+        <Text style={styles.timestamp}>
+          {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+      </Surface>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.messagesList}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-      />
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Mesajınızı yazın..."
-          right={
-            <TextInput.Icon
-              icon="send"
-              onPress={handleSend}
-              disabled={!inputText.trim()}
-            />
-          }
-          onSubmitEditing={handleSend}
+      <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
-      </View>
-    </KeyboardAvoidingView>
+        <View style={styles.inputContainer}>
+          <TextInput
+              style={styles.input}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Mesajınızı yazın..."
+              right={
+                <TextInput.Icon
+                    icon="send"
+                    onPress={handleSend}
+                    disabled={!inputText.trim()}
+                />
+              }
+              onSubmitEditing={handleSend}
+          />
+        </View>
+      </KeyboardAvoidingView>
   );
 }
 
@@ -130,4 +130,4 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#f5f5f5',
   },
-}); 
+});

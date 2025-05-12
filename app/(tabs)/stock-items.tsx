@@ -1,69 +1,129 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Text, Card, Button, DataTable, Portal, Modal, TextInput, FAB } from 'react-native-paper';
-import { productService } from '../../services/api';
 import { Product } from '../../types';
+import { useApp } from '../../context/AppContext';
+
+// Test verileri
+const initialProducts: Product[] = [
+  {
+    id: 1,
+    name: 'Kalem',
+    description: 'Siyah tükenmez kalem',
+    unit: 'adet',
+    current_stock: 50,
+    minimum_stock: 10,
+    monthly_consumption: 20,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 2,
+    name: 'A4 Kağıt',
+    description: '80 gr A4 kağıt',
+    unit: 'paket',
+    current_stock: 15,
+    minimum_stock: 5,
+    monthly_consumption: 10,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
 
 export default function StockItemsScreen() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { products, addProduct, updateProduct, addStockMovement } = useApp();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [consumeModalVisible, setConsumeModalVisible] = useState(false);
+  const [newProductModalVisible, setNewProductModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState('');
   const [description, setDescription] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Yeni ürün için state'ler
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductDescription, setNewProductDescription] = useState('');
+  const [newProductUnit, setNewProductUnit] = useState('');
+  const [newProductCurrentStock, setNewProductCurrentStock] = useState('');
+  const [newProductMinimumStock, setNewProductMinimumStock] = useState('');
+  const [newProductMonthlyConsumption, setNewProductMonthlyConsumption] = useState('');
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await productService.getAll();
-      setProducts(response.data || []);
-    } catch (error) {
-      console.error('Veriler yüklenirken hata oluştu:', error);
-      setError('Veriler yüklenirken bir hata oluştu');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddStock = async () => {
+  const handleAddStock = () => {
     if (!selectedProduct || !quantity) return;
 
-    try {
-      await productService.addStock(selectedProduct.id, {
-        quantity: parseInt(quantity),
-        description
-      });
-      setAddModalVisible(false);
-      setQuantity('');
-      setDescription('');
-      loadData();
-    } catch (error) {
-      console.error('Stok eklenirken hata oluştu:', error);
-    }
+    const updatedProduct = {
+      ...selectedProduct,
+      current_stock: selectedProduct.current_stock + parseInt(quantity),
+      updated_at: new Date().toISOString()
+    };
+
+    updateProduct(updatedProduct);
+
+    addStockMovement({
+      id: Date.now(),
+      product_id: selectedProduct.id,
+      quantity: parseInt(quantity),
+      description: description || 'Stok girişi',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    setAddModalVisible(false);
+    setQuantity('');
+    setDescription('');
   };
 
-  const handleConsumeStock = async () => {
+  const handleConsumeStock = () => {
     if (!selectedProduct || !quantity) return;
 
-    try {
-      await productService.consumeStock(selectedProduct.id, {
-        quantity: parseInt(quantity),
-        description
-      });
-      setConsumeModalVisible(false);
-      setQuantity('');
-      setDescription('');
-      loadData();
-    } catch (error) {
-      console.error('Stok tüketilirken hata oluştu:', error);
+    const updatedProduct = {
+      ...selectedProduct,
+      current_stock: selectedProduct.current_stock - parseInt(quantity),
+      updated_at: new Date().toISOString()
+    };
+
+    updateProduct(updatedProduct);
+
+    addStockMovement({
+      id: Date.now(),
+      product_id: selectedProduct.id,
+      quantity: -parseInt(quantity),
+      description: description || 'Stok çıkışı',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    setConsumeModalVisible(false);
+    setQuantity('');
+    setDescription('');
+  };
+
+  const handleAddNewProduct = () => {
+    if (!newProductName || !newProductUnit || !newProductCurrentStock || !newProductMinimumStock || !newProductMonthlyConsumption) {
+      return;
     }
+
+    const newProduct: Product = {
+      id: Date.now(),
+      name: newProductName,
+      description: newProductDescription,
+      unit: newProductUnit,
+      current_stock: parseInt(newProductCurrentStock),
+      minimum_stock: parseInt(newProductMinimumStock),
+      monthly_consumption: parseInt(newProductMonthlyConsumption),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    addProduct(newProduct);
+    setNewProductModalVisible(false);
+    setNewProductName('');
+    setNewProductDescription('');
+    setNewProductUnit('');
+    setNewProductCurrentStock('');
+    setNewProductMinimumStock('');
+    setNewProductMonthlyConsumption('');
   };
 
   if (loading) {
@@ -79,7 +139,7 @@ export default function StockItemsScreen() {
     return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button mode="contained" onPress={loadData}>
+          <Button mode="contained" onPress={() => setError(null)}>
             Yeniden Dene
           </Button>
         </View>
@@ -88,8 +148,7 @@ export default function StockItemsScreen() {
 
   return (
       <View style={styles.container}>
-        <Card style={styles.card}>
-          <Card.Title title="Ürünler" />
+        <Card>
           <Card.Content>
             <ScrollView horizontal>
               <DataTable>
@@ -108,15 +167,15 @@ export default function StockItemsScreen() {
                         <DataTable.Row key={item.id}>
                           <DataTable.Cell style={styles.column}>{item.name}</DataTable.Cell>
                           <DataTable.Cell style={styles.column}>{item.unit}</DataTable.Cell>
-                          <DataTable.Cell style={styles.column}>{item.stock_quantity} {item.unit}</DataTable.Cell>
+                          <DataTable.Cell style={styles.column}>{item.current_stock} {item.unit}</DataTable.Cell>
                           <DataTable.Cell style={styles.column}>{item.minimum_stock} {item.unit}</DataTable.Cell>
                           <DataTable.Cell style={styles.column}>{item.monthly_consumption} {item.unit}</DataTable.Cell>
                           <DataTable.Cell style={styles.column}>
                             <Text style={[
                               styles.statusBadge,
-                              { backgroundColor: item.stock_quantity <= item.minimum_stock ? '#dc3545' : '#28a745' }
+                              { backgroundColor: item.current_stock <= item.minimum_stock ? '#dc3545' : '#28a745' }
                             ]}>
-                              {item.stock_quantity <= item.minimum_stock ? 'Kritik Seviye' : 'Normal'}
+                              {item.current_stock <= item.minimum_stock ? 'Kritik Seviye' : 'Normal'}
                             </Text>
                           </DataTable.Cell>
                           <DataTable.Cell style={styles.column}>
@@ -158,6 +217,7 @@ export default function StockItemsScreen() {
         </Card>
 
         <Portal>
+          {/* Stok Ekleme Modalı */}
           <Modal
               visible={addModalVisible}
               onDismiss={() => setAddModalVisible(false)}
@@ -186,6 +246,7 @@ export default function StockItemsScreen() {
             </View>
           </Modal>
 
+          {/* Stok Tüketim Modalı */}
           <Modal
               visible={consumeModalVisible}
               onDismiss={() => setConsumeModalVisible(false)}
@@ -213,14 +274,65 @@ export default function StockItemsScreen() {
               <Button mode="contained" onPress={handleConsumeStock}>Tüketimi Kaydet</Button>
             </View>
           </Modal>
+
+          {/* Yeni Ürün Ekleme Modalı */}
+          <Modal
+              visible={newProductModalVisible}
+              onDismiss={() => setNewProductModalVisible(false)}
+              contentContainerStyle={styles.modalContainer}
+          >
+            <Text variant="titleLarge" style={styles.modalTitle}>Yeni Ürün Ekle</Text>
+            <TextInput
+                label="Ürün Adı"
+                value={newProductName}
+                onChangeText={setNewProductName}
+                style={styles.input}
+            />
+            <TextInput
+                label="Birim (kg, adet, lt vb.)"
+                value={newProductUnit}
+                onChangeText={setNewProductUnit}
+                style={styles.input}
+            />
+            <TextInput
+                label="Açıklama"
+                value={newProductDescription}
+                onChangeText={setNewProductDescription}
+                multiline
+                style={styles.input}
+            />
+            <TextInput
+                label="Mevcut Stok"
+                value={newProductCurrentStock}
+                onChangeText={setNewProductCurrentStock}
+                keyboardType="numeric"
+                style={styles.input}
+            />
+            <TextInput
+                label="Minimum Stok"
+                value={newProductMinimumStock}
+                onChangeText={setNewProductMinimumStock}
+                keyboardType="numeric"
+                style={styles.input}
+            />
+            <TextInput
+                label="Aylık Tüketim"
+                value={newProductMonthlyConsumption}
+                onChangeText={setNewProductMonthlyConsumption}
+                keyboardType="numeric"
+                style={styles.input}
+            />
+            <View style={styles.modalButtons}>
+              <Button onPress={() => setNewProductModalVisible(false)}>İptal</Button>
+              <Button mode="contained" onPress={handleAddNewProduct}>Ürün Ekle</Button>
+            </View>
+          </Modal>
         </Portal>
 
         <FAB
             icon="plus"
             style={styles.fab}
-            onPress={() => {
-              // Yeni ürün ekleme sayfasına yönlendir
-            }}
+            onPress={() => setNewProductModalVisible(true)}
         />
       </View>
   );
@@ -229,7 +341,7 @@ export default function StockItemsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -240,33 +352,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   errorText: {
     color: 'red',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  card: {
-    margin: 8,
-    flex: 1,
+    marginBottom: 16,
   },
   column: {
     width: 150,
-    paddingHorizontal: 8,
-  },
-  statusBadge: {
-    color: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontSize: 12,
   },
   actionButtons: {
     flexDirection: 'row',
+    gap: 8,
   },
   actionButton: {
-    marginHorizontal: 2,
+    minWidth: 40,
   },
   modalContainer: {
     backgroundColor: 'white',
@@ -276,6 +376,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     marginBottom: 16,
+    textAlign: 'center',
   },
   input: {
     marginBottom: 16,
@@ -283,13 +384,19 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 16,
+    gap: 8,
   },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 0,
     bottom: 0,
-    backgroundColor: '#2196F3',
+  },
+  statusBadge: {
+    color: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    fontSize: 12,
   },
 });
