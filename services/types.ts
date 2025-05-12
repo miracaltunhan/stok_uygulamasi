@@ -7,3 +7,4 @@ export interface Product {
     minimum_stock: number;
     monthly_consumption: number;
 }
+
