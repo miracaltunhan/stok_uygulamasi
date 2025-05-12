@@ -1,171 +1,98 @@
-// services/api.ts
 import axios from 'axios';
+import { Product, Stock, ApiResponse, StockMovementRequest } from '../types';
 
-const API_URL = 'http://192.168.0.9:8000/api';
+// Laravel backend'in çalıştığı URL
+const API_URL = 'http://192.168.0.21:8000/';
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: 30000, // 30 saniye timeout
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  withCredentials: true
 });
 
-// Ürün servisi (Item işlemleri) için API fonksiyonları
+
+// Hata yakalama
+api.interceptors.response.use(
+    response => response,
+    error => {
+      console.error('API Hatası:', error);
+      console.error('Yanıt:', error.response?.data);
+      if (error.code === 'ERR_NETWORK') {
+        console.error('Backend sunucusuna bağlanılamıyor. Lütfen sunucunun çalıştığından emin olun.');
+      }
+      return Promise.reject(error);
+    }
+);
+
+// Ürün servisi
 export const productService = {
-  // Tüm ürünleri al
   getAll: async () => {
-    try {
-      console.log('API İsteği Başlatılıyor:', `${API_URL}/items`);
-      const response = await api.get('/items');
-      console.log('API Yanıtı:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('API Hatası:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      return [];
-    }
+    const response = await api.get('/items');
+    return response.data;
   },
 
-  // ID ile belirli bir ürünü al
   getById: async (id: number) => {
-    try {
-      const response = await api.get(`/items/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (getById):', error.response?.data || error.message);
-      return null;
-    }
+    const response = await api.get(`/items/${id}`);
+    return response.data;
   },
 
-  // Yeni bir ürün oluştur
-  create: async (data: { name: string, description: string, current_stock: number, minimum_stock: number, monthly_consumption: number }) => {
-    try {
-      const response = await api.post('/items', data);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (create):', error.response?.data || error.message);
-      return null;
-    }
+  create: async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+    const response = await api.post('/items', product);
+    return response.data;
   },
 
-  // Var olan ürünü güncelle
-  update: async (id: number, data: { name: string, description: string, current_stock: number, minimum_stock: number, monthly_consumption: number }) => {
-    try {
-      const response = await api.put(`/items/${id}`, data);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (update):', error.response?.data || error.message);
-      return null;
-    }
+  update: async (id: number, product: Partial<Product>) => {
+    const response = await api.put(`/items/${id}`, product);
+    return response.data;
   },
 
-  // Ürünü sil
   delete: async (id: number) => {
-    try {
-      await api.delete(`/items/${id}`);
-      return true;
-    } catch (error) {
-      console.error('API Error (delete):', error.response?.data || error.message);
-      return false;
-    }
+    const response = await api.delete(`/items/${id}`);
+    return response.data;
   },
 
-  // Stok ekle
-  addStock: async (id: number, data: { quantity: number, description: string }) => {
-    try {
-      const response = await api.post(`/items/${id}/add-stock`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Stok Ekleme Hatası:', error);
-      throw error;
-    }
+  addStock: async (id: number, data: { quantity: number; description: string }) => {
+    const response = await api.post(`/items/${id}/add-stock`, data);
+    return response.data;
   },
 
-  // Stok tüket
-  consumeStock: async (id: number, data: { quantity: number, description: string }) => {
-    try {
-      const response = await api.post(`/items/${id}/consume`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Stok Tüketme Hatası:', error);
-      throw error;
-    }
+  consume: async (id: number, data: { quantity: number; description: string }) => {
+    const response = await api.post(`/items/${id}/consume`, data);
+    return response.data;
   }
 };
 
-// Stok hareketleri servisi için API fonksiyonları
-export const stockMovementService = {
-  // Tüm stok hareketlerini al
+// Stok hareketleri servisi
+export const stockService = {
   getAll: async () => {
-    try {
-      const response = await api.get('/stock-movements');
-      return response.data;
-    } catch (error) {
-      console.error('API Error (getAll Stock Movements):', error.response?.data || error.message);
-      return [];
-    }
+    const response = await api.get('/stock-movements');
+    return response.data;
   },
 
-  // Belirli bir stok hareketini al
-  getById: async (id: number) => {
-    try {
-      const response = await api.get(`/stock-movements/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (getById Stock Movement):', error.response?.data || error.message);
-      return null;
-    }
+  getByItemId: async (itemId: number) => {
+    const response = await api.get(`/items/${itemId}/stock-movements`);
+    return response.data;
   },
 
-  // Yeni bir stok hareketi oluştur
-  create: async (data: { item_id: number, quantity: number, type: string, date: string, notes: string | null }) => {
-    try {
-      const response = await api.post('/stock-movements', data);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (create Stock Movement):', error.response?.data || error.message);
-      return null;
-    }
-  },
-
-  // Stok hareketini güncelle
-  update: async (id: number, data: { item_id: number, quantity: number, type: string, date: string, notes: string | null }) => {
-    try {
-      const response = await api.put(`/stock-movements/${id}`, data);
-      return response.data;
-    } catch (error) {
-      console.error('API Error (update Stock Movement):', error.response?.data || error.message);
-      return null;
-    }
-  },
-
-  // Stok hareketini sil
-  delete: async (id: number) => {
-    try {
-      await api.delete(`/stock-movements/${id}`);
-      return true;
-    } catch (error) {
-      console.error('API Error (delete Stock Movement):', error.response?.data || error.message);
-      return false;
-    }
+  create: async (data: {
+    item_id: number;
+    quantity: number;
+    type: 'in' | 'out';
+    description: string;
+  }) => {
+    const response = await api.post('/stock-movements', data);
+    return response.data;
   }
 };
 
-// Stok analitik servisi
-export const stockAnalyticsService = {
-  // Stok analitik verilerini al
-  getAnalytics: async () => {
-    try {
-      const response = await api.get('/stock-analytics');
-      return response.data;
-    } catch (error) {
-      console.error('API Error (get Stock Analytics):', error.response?.data || error.message);
-      return {};
-    }
-  }
+// Tüketim kayıtları
+export const consumptionService = {
+  getAll: () => api.get('/consumption-records'),
+  getByProductId: (productId: number) => api.get(`/consumption-records/product/${productId}`),
+  create: (data: any) => api.post('/consumption-records', data),
 };
+
+export default api;
