@@ -8,3 +8,4 @@ export interface Product {
     monthly_consumption: number;
 }
 
+
