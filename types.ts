@@ -3,11 +3,12 @@ export interface Product {
     name: string;
     description: string;
     unit: string;
-    current_stock: number;
-    minimum_stock: number;
-    monthly_consumption: number;
-    created_at: string;
-    updated_at: string;
+    current_stock: string;
+    minimum_stock: string;
+    stock_tracking_type: 'manuel' | 'otomatik';
+    weekly_consumption: string;
+    created_at: number;
+    updated_at: number;
 }
 
 export interface Stock {
@@ -15,8 +16,8 @@ export interface Stock {
     product_id: number;
     quantity: number;
     description: string;
-    created_at: string;
-    updated_at: string;
+    created_at: number;
+    updated_at: number;
 }
 
 export interface ApiResponse<T> {
@@ -26,6 +27,6 @@ export interface ApiResponse<T> {
 }
 
 export interface StockMovementRequest {
-    quantity: number;
+    quantity: string;
     description: string;
 }
