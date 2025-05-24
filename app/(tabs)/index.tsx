@@ -29,12 +29,7 @@ export default function HomeScreen() {
               </Card.Content>
             </Card>
 
-            <Card style={styles.statsCard}>
-              <Card.Content>
-                <Text variant="titleLarge">Toplam Değer</Text>
-                <Text variant="headlineMedium">{getTotalValue()} TL</Text>
-              </Card.Content>
-            </Card>
+           
           </View>
 
           {/* Kritik Stokta Olan Ürünler */}

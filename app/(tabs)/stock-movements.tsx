@@ -63,8 +63,8 @@ export default function StockMovementsScreen() {
                     return product !== undefined; // Sadece mevcut ürünlerin hareketlerini göster
                   })
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .map(movement => (
-                    <DataTable.Row key={movement.id}>
+                  .map((movement) => (
+                    <DataTable.Row key={`${movement.id}-${movement.created_at}`}>
                       <DataTable.Cell>
                         {new Date(movement.created_at).toLocaleDateString('tr-TR', {
                           day: '2-digit',
